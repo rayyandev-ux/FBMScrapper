@@ -9,17 +9,16 @@
     "deploy": "netlify deploy --prod"
   },
   "dependencies": {
-    "axios": "^1.6.2",
+    "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12",
-    "chromium": "^3.0.3",
-    "dotenv": "^16.6.1",
+    "dotenv": "^16.3.0",
     "node-telegram-bot-api": "^0.64.0",
-    "openai": "^4.20.1",
-    "puppeteer": "^21.5.2",
-    "puppeteer-core": "^21.5.2"
+    "openai": "^4.20.0",
+    "puppeteer": "^21.5.0",
+    "puppeteer-core": "^21.5.0"
   },
   "devDependencies": {
-    "netlify-cli": "^17.10.1"
+    "netlify-cli": "^17.10.0"
   },
   "keywords": [
     "facebook",
