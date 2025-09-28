@@ -4,6 +4,10 @@ const OpenAI = require('openai');
 const TelegramBot = require('node-telegram-bot-api');
 const { getStorage } = require('./storage');
 
+// Configuración optimizada para Netlify Functions
+chromium.setHeadlessMode = true;
+chromium.setGraphicsMode = false;
+
 // Configuración de OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -22,10 +26,13 @@ async function analyzeReferenceProfile() {
   try {
     console.log('Analizando perfil de referencia para extraer contexto...');
     
+    // Configuración optimizada para Netlify Functions
+    const executablePath = await chromium.executablePath();
+    
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: executablePath,
       headless: chromium.headless,
       ignoreHTTPSErrors: true,
     });
@@ -251,10 +258,13 @@ exports.handler = async (event, context) => {
       };
     }
     
+    // Configuración optimizada para Netlify Functions
+    const executablePath = await chromium.executablePath();
+    
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: executablePath,
       headless: chromium.headless,
       ignoreHTTPSErrors: true,
     });
