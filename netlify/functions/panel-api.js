@@ -427,12 +427,32 @@ async function refreshMarketContext(headers) {
 // Bot control functions
 async function runBot(headers) {
     try {
+        console.log('=== DEBUG: Iniciando runBot ===');
+        await addLog('DEBUG: Iniciando ejecución del bot', 'info');
+        
+        // Debug: Verificar todas las variables de entorno disponibles
+        const allEnvVars = Object.keys(process.env);
+        console.log('DEBUG: Variables de entorno disponibles:', allEnvVars.length);
+        await addLog(`DEBUG: Total variables de entorno: ${allEnvVars.length}`, 'info');
+        
         // Verificar variables de entorno críticas
         const requiredEnvVars = ['OPENAI_API_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'];
+        const envStatus = {};
+        
+        requiredEnvVars.forEach(varName => {
+            const exists = !!process.env[varName];
+            const value = exists ? `${process.env[varName].substring(0, 10)}...` : 'NO CONFIGURADA';
+            envStatus[varName] = { exists, value };
+            console.log(`DEBUG: ${varName} = ${exists ? 'CONFIGURADA' : 'FALTANTE'} (${value})`);
+        });
+        
+        await addLog(`DEBUG: Estado variables - ${JSON.stringify(envStatus)}`, 'info');
+        
         const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
         
         if (missingVars.length > 0) {
             const errorMsg = `Variables de entorno faltantes: ${missingVars.join(', ')}. Configure estas variables en Netlify para que el bot funcione correctamente.`;
+            console.error('DEBUG: Variables faltantes:', missingVars);
             await addLog(errorMsg, 'error');
             
             return {
@@ -442,13 +462,22 @@ async function runBot(headers) {
                     success: false, 
                     error: 'Environment variables not configured',
                     message: errorMsg,
-                    missingVars: missingVars
+                    missingVars: missingVars,
+                    debug: {
+                        allEnvCount: allEnvVars.length,
+                        envStatus: envStatus
+                    }
                 })
             };
         }
         
+        console.log('DEBUG: Todas las variables requeridas están configuradas');
+        await addLog('DEBUG: Variables de entorno validadas correctamente', 'info');
+        
         // Import and run the scrape-cars function
+        console.log('DEBUG: Importando scrape-cars module');
         const scrapeCars = require('./scrape-cars');
+        await addLog('DEBUG: Módulo scrape-cars importado', 'info');
         
         // Create a mock event for the scrape function with test parameters
         const mockEvent = {
@@ -460,10 +489,18 @@ async function runBot(headers) {
             })
         };
         
+        console.log('DEBUG: Ejecutando scraper con evento:', JSON.stringify(mockEvent));
+        await addLog(`DEBUG: Llamando scraper con acción: test-run, maxItems: 3`, 'info');
+        
         const result = await scrapeCars.handler(mockEvent, {});
+        
+        console.log('DEBUG: Resultado del scraper - Status:', result.statusCode);
+        await addLog(`DEBUG: Scraper completado - Status: ${result.statusCode}`, 'info');
         
         if (result.statusCode === 200) {
             const resultData = JSON.parse(result.body);
+            console.log('DEBUG: Datos del resultado:', JSON.stringify(resultData, null, 2));
+            await addLog(`DEBUG: Resultado exitoso - ${JSON.stringify(resultData)}`, 'info');
             
             // Update stats
             await updateStats({
@@ -485,11 +522,23 @@ async function runBot(headers) {
                 })
             };
         } else {
-            const errorData = JSON.parse(result.body);
+            console.error('DEBUG: Error en scraper - Status:', result.statusCode, 'Body:', result.body);
+            await addLog(`DEBUG: Error del scraper - Status: ${result.statusCode}, Body: ${result.body}`, 'error');
+            
+            let errorData;
+            try {
+                errorData = JSON.parse(result.body);
+            } catch (parseError) {
+                console.error('DEBUG: Error parseando respuesta del scraper:', parseError);
+                errorData = { message: `Parse error: ${result.body}` };
+            }
+            
             throw new Error(errorData.message || 'Bot execution failed');
         }
     } catch (error) {
+        console.error('DEBUG: Excepción capturada en runBot:', error);
         await addLog(`Bot execution error: ${error.message}`, 'error');
+        await addLog(`DEBUG: Stack trace - ${error.stack}`, 'error');
         
         return {
             statusCode: 500,
@@ -498,7 +547,11 @@ async function runBot(headers) {
                 success: false, 
                 error: 'Failed to run bot',
                 message: error.message,
-                stack: error.stack
+                stack: error.stack,
+                debug: {
+                    timestamp: new Date().toISOString(),
+                    errorType: error.constructor.name
+                }
             })
         };
     }
