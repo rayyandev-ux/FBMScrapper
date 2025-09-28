@@ -427,14 +427,37 @@ async function refreshMarketContext(headers) {
 // Bot control functions
 async function runBot(headers) {
     try {
+        // Verificar variables de entorno críticas
+        const requiredEnvVars = ['OPENAI_API_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'];
+        const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+        
+        if (missingVars.length > 0) {
+            const errorMsg = `Variables de entorno faltantes: ${missingVars.join(', ')}. Configure estas variables en Netlify para que el bot funcione correctamente.`;
+            await addLog(errorMsg, 'error');
+            
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ 
+                    success: false, 
+                    error: 'Environment variables not configured',
+                    message: errorMsg,
+                    missingVars: missingVars
+                })
+            };
+        }
+        
         // Import and run the scrape-cars function
         const scrapeCars = require('./scrape-cars');
         
-        // Create a mock event for the scrape function
+        // Create a mock event for the scrape function with test parameters
         const mockEvent = {
             httpMethod: 'POST',
             headers: {},
-            body: null
+            body: JSON.stringify({
+                action: 'test-run',
+                maxItems: 3
+            })
         };
         
         const result = await scrapeCars.handler(mockEvent, {});
@@ -462,7 +485,8 @@ async function runBot(headers) {
                 })
             };
         } else {
-            throw new Error('Bot execution failed');
+            const errorData = JSON.parse(result.body);
+            throw new Error(errorData.message || 'Bot execution failed');
         }
     } catch (error) {
         await addLog(`Bot execution error: ${error.message}`, 'error');
@@ -473,7 +497,8 @@ async function runBot(headers) {
             body: JSON.stringify({ 
                 success: false, 
                 error: 'Failed to run bot',
-                message: error.message 
+                message: error.message,
+                stack: error.stack
             })
         };
     }
