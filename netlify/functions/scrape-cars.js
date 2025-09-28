@@ -16,10 +16,12 @@ const storage = getStorage();
 
 // Función para analizar el perfil de referencia y extraer contexto de mercado
 async function analyzeReferenceProfile() {
+  let browser = null;
+  
   try {
     console.log('Analizando perfil de referencia para extraer contexto...');
     
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: true,
       args: [
         '--no-sandbox',
@@ -29,7 +31,9 @@ async function analyzeReferenceProfile() {
         '--no-first-run',
         '--no-zygote',
         '--single-process',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
       ]
     });
 
@@ -104,7 +108,10 @@ async function analyzeReferenceProfile() {
       return listings;
     });
 
-    await browser.close();
+    // Cerrar browser antes de procesar el contexto
+    if (browser) {
+      await browser.close();
+    }
     
     // Analizar el contexto extraído
     const context = analyzeMarketContext(profileContext);
@@ -114,6 +121,16 @@ async function analyzeReferenceProfile() {
     
   } catch (error) {
     console.error('Error analizando perfil de referencia:', error);
+    
+    // Asegurar que el browser se cierre en caso de error
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error cerrando browser en analyzeReferenceProfile:', closeError);
+      }
+    }
+    
     return getDefaultContext();
   }
 }
@@ -186,14 +203,30 @@ function getDefaultContext() {
 }
 
 exports.handler = async (event, context) => {
+  let browser = null;
+  
   try {
     console.log('Iniciando scraping de Facebook Marketplace - Perú (búsqueda general)');
     
-    // Primero analizar el perfil de referencia para obtener contexto
-    const marketContext = await analyzeReferenceProfile();
-    console.log('Contexto de mercado obtenido:', marketContext);
+    // Verificar variables de entorno críticas
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY no está configurada');
+    }
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
+      throw new Error('TELEGRAM_BOT_TOKEN no está configurada');
+    }
     
-    const browser = await puppeteer.launch({
+    // Primero analizar el perfil de referencia para obtener contexto
+    let marketContext;
+    try {
+      marketContext = await analyzeReferenceProfile();
+      console.log('Contexto de mercado obtenido:', marketContext);
+    } catch (profileError) {
+      console.warn('Error obteniendo contexto del perfil, usando contexto por defecto:', profileError.message);
+      marketContext = getDefaultContext();
+    }
+    
+    browser = await puppeteer.launch({
       headless: true,
       args: [
         '--no-sandbox',
@@ -203,7 +236,9 @@ exports.handler = async (event, context) => {
         '--no-first-run',
         '--no-zygote',
         '--single-process',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
       ]
     });
 
@@ -355,6 +390,11 @@ exports.handler = async (event, context) => {
       }
     }
     
+    // Cerrar browser antes de retornar
+    if (browser) {
+      await browser.close();
+    }
+    
     return {
       statusCode: 200,
       body: JSON.stringify({
@@ -373,11 +413,22 @@ exports.handler = async (event, context) => {
     
   } catch (error) {
     console.error('Error en scraping:', error);
+    
+    // Asegurar que el browser se cierre en caso de error
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error cerrando browser:', closeError);
+      }
+    }
+    
     return {
       statusCode: 500,
       body: JSON.stringify({
         success: false,
-        error: error.message
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
     };
   }
