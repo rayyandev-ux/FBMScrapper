@@ -109,12 +109,11 @@ class DashboardController {
             this.showMessage(`❌ Error: ${error.message}`, 'error');
         } finally {
             this.setButtonLoading(runButton, false);
-            setTimeout(() => {
-                this.botRunning = false;
-                runButton.disabled = false;
-                stopButton.disabled = true;
-                this.updateBotStatus('Inactivo');
-            }, 5000); // Simulate bot running for 5 seconds
+            // Remove artificial delay - let the real response determine timing
+            this.botRunning = false;
+            runButton.disabled = false;
+            stopButton.disabled = true;
+            this.updateBotStatus('Inactivo');
         }
     }
 
@@ -431,12 +430,25 @@ class DashboardController {
         this.updateMarketContext();
         this.updateCarsList();
         
-        // Simulate connection check
-        setTimeout(() => {
-            this.isConnected = true;
+        // Check real connection status
+        this.checkConnectionStatus();
+    }
+
+    async checkConnectionStatus() {
+        try {
+            const response = await fetch('/.netlify/functions/panel-api/stats');
+            this.isConnected = response.ok;
             this.updateStatus();
-            this.addLog('Conexión establecida con el servidor', 'success');
-        }, 1000);
+            if (this.isConnected) {
+                this.addLog('Conexión establecida con el servidor', 'success');
+            } else {
+                this.addLog('Error de conexión con el servidor', 'error');
+            }
+        } catch (error) {
+            this.isConnected = false;
+            this.updateStatus();
+            this.addLog('Error de conexión con el servidor', 'error');
+        }
     }
 
     startPeriodicUpdates() {
@@ -460,39 +472,3 @@ class DashboardController {
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new DashboardController();
 });
-
-// Add some sample data for demonstration
-setTimeout(() => {
-    if (window.dashboard) {
-        window.dashboard.recentCars = [
-            {
-                title: 'Toyota Corolla 2018 Automático',
-                year: 2018,
-                brand: 'Toyota',
-                price: 38000
-            },
-            {
-                title: 'Hyundai Accent 2015 Manual',
-                year: 2015,
-                brand: 'Hyundai',
-                price: 28000
-            },
-            {
-                title: 'Nissan Sentra 2017 CVT',
-                year: 2017,
-                brand: 'Nissan',
-                price: 35000
-            }
-        ];
-        
-        window.dashboard.stats = {
-            totalCars: 45,
-            sentToTelegram: 12,
-            avgPrice: 42000,
-            successRate: 27
-        };
-        
-        window.dashboard.updateCarsList();
-        window.dashboard.updateStats();
-    }
-}, 2000);

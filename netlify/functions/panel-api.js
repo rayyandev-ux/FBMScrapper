@@ -370,22 +370,35 @@ async function getMarketContext(headers) {
 
 async function refreshMarketContext(headers) {
     try {
-        // Simulate calling the analyzeReferenceProfile function
-        const mockContext = {
-            avgPrice: Math.floor(Math.random() * 20000) + 35000, // 35k-55k
-            priceRange: { 
-                min: Math.floor(Math.random() * 10000) + 20000, // 20k-30k
-                max: Math.floor(Math.random() * 20000) + 70000   // 70k-90k
+        // Call the real scrape-cars function to analyze reference profile
+        const scrapeResponse = await fetch(`${process.env.URL || 'http://localhost:8888'}/.netlify/functions/scrape-cars`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             },
-            avgYear: Math.floor(Math.random() * 8) + 2015, // 2015-2022
-            topBrands: ['Toyota', 'Hyundai', 'Nissan', 'Kia', 'Chevrolet'].slice(0, 3),
-            segment: ['bajo', 'medio', 'alto'][Math.floor(Math.random() * 3)],
-            lastUpdate: new Date().toISOString()
-        };
+            body: JSON.stringify({ 
+                action: 'analyze-profile-only',
+                profileUrl: process.env.FB_TARGET_PROFILE_URL
+            })
+        });
 
-        // Save context
+        if (!scrapeResponse.ok) {
+            throw new Error(`Failed to analyze profile: ${scrapeResponse.status}`);
+        }
+
+        const scrapeData = await scrapeResponse.json();
+        
+        if (!scrapeData.success || !scrapeData.stats || !scrapeData.stats.marketContext) {
+            throw new Error('No market context returned from profile analysis');
+        }
+
+        const context = scrapeData.stats.marketContext;
+        
+        // Save context to storage
         const contextPath = '/tmp/market-context.json';
-        await fs.writeFile(contextPath, JSON.stringify(mockContext, null, 2));
+        await fs.writeFile(contextPath, JSON.stringify(context, null, 2));
+
+        await addLog(`Market context refreshed: ${context.totalListings} listings analyzed`, 'info');
 
         return {
             statusCode: 200,
@@ -393,10 +406,12 @@ async function refreshMarketContext(headers) {
             body: JSON.stringify({
                 success: true,
                 message: 'Market context refreshed successfully',
-                context: mockContext
+                context: context
             })
         };
     } catch (error) {
+        await addLog(`Market context refresh error: ${error.message}`, 'error');
+        
         return {
             statusCode: 500,
             headers,
@@ -466,15 +481,39 @@ async function runBot(headers) {
 
 async function testBot(headers) {
     try {
-        // Simulate a test run
-        const mockResult = {
-            totalCars: Math.floor(Math.random() * 5) + 1,
-            sentToTelegram: Math.floor(Math.random() * 3),
-            avgPrice: Math.floor(Math.random() * 20000) + 30000,
-            testMode: true
+        // Call the real scrape-cars function for testing
+        const scrapeResponse = await fetch(`${process.env.URL || 'http://localhost:8888'}/.netlify/functions/scrape-cars`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                action: 'test-run',
+                maxItems: 3 // Limit for testing
+            })
+        });
+
+        if (!scrapeResponse.ok) {
+            throw new Error(`Scrape function failed: ${scrapeResponse.status}`);
+        }
+
+        const scrapeData = await scrapeResponse.json();
+        
+        if (!scrapeData.success) {
+            throw new Error(scrapeData.error || 'Scrape function returned error');
+        }
+
+        const result = {
+            totalCars: scrapeData.stats?.totalFound || 0,
+            processed: scrapeData.stats?.processed || 0,
+            sentToTelegram: scrapeData.stats?.sentToTelegram || 0,
+            country: scrapeData.stats?.country || 'Peru',
+            searchType: scrapeData.stats?.searchType || 'general_marketplace',
+            testMode: true,
+            marketContext: scrapeData.stats?.marketContext
         };
 
-        await addLog(`Test completed: ${mockResult.totalCars} cars processed, ${mockResult.sentToTelegram} sent`, 'info');
+        await addLog(`Test completed: ${result.totalCars} cars found, ${result.processed} processed, ${result.sentToTelegram} sent to Telegram`, 'info');
 
         return {
             statusCode: 200,
@@ -482,7 +521,7 @@ async function testBot(headers) {
             body: JSON.stringify({
                 success: true,
                 message: 'Test completed successfully',
-                result: mockResult
+                result: result
             })
         };
     } catch (error) {

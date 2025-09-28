@@ -206,7 +206,20 @@ exports.handler = async (event, context) => {
   let browser = null;
   
   try {
-    console.log('Iniciando scraping de Facebook Marketplace - Perú (búsqueda general)');
+    // Parse request body if it exists
+    let requestData = {};
+    if (event.body) {
+      try {
+        requestData = JSON.parse(event.body);
+      } catch (parseError) {
+        console.warn('Could not parse request body:', parseError.message);
+      }
+    }
+    
+    const action = requestData.action || 'full-scrape';
+    const maxItems = requestData.maxItems || parseInt(process.env.MAX_ITEMS_PER_RUN) || 15;
+    
+    console.log(`Iniciando scraping de Facebook Marketplace - Perú (${action})`);
     
     // Verificar variables de entorno críticas
     if (!process.env.OPENAI_API_KEY) {
@@ -224,6 +237,25 @@ exports.handler = async (event, context) => {
     } catch (profileError) {
       console.warn('Error obteniendo contexto del perfil, usando contexto por defecto:', profileError.message);
       marketContext = getDefaultContext();
+    }
+    
+    // Si solo se solicita análisis de perfil, retornar el contexto
+    if (action === 'analyze-profile-only') {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: true,
+          message: 'Profile analysis completed',
+          stats: {
+            marketContext: marketContext,
+            totalFound: 0,
+            processed: 0,
+            sentToTelegram: 0,
+            country: 'Peru',
+            searchType: 'profile_analysis'
+          }
+        })
+      };
     }
     
     browser = await puppeteer.launch({
@@ -355,7 +387,7 @@ exports.handler = async (event, context) => {
     // Ordenar por precio para priorizar oportunidades
     const sortedCars = cars.sort((a, b) => (a.numericPrice || 0) - (b.numericPrice || 0));
     
-    for (const car of sortedCars.slice(0, 15)) { // Procesar máximo 15 carros por ejecución
+    for (const car of sortedCars.slice(0, maxItems)) { // Usar maxItems dinámico
       try {
         // Verificar si ya existe en storage
         const existingCar = await storage.getCar(car.url);
