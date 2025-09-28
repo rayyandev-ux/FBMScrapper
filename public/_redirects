@@ -1,0 +1,11 @@
+# Netlify redirects file
+# Handle SPA routing
+
+# Redirect root to index.html
+/dashboard /index.html 200
+
+# Handle login page
+/login /login.html 200
+
+# Fallback for SPA - redirect all other routes to index.html
+/* /index.html 200

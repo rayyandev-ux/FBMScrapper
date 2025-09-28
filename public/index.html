@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - FB Marketplace Bot Perú</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1>🚗 FB Marketplace Bot Perú</h1>
+                <div class="status-indicator">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Conectando...</span>
+                </div>
+                <button class="logout-btn" id="logoutBtn">Cerrar Sesión</button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main class="dashboard">
+            <!-- Control Panel -->
+            <section class="card control-panel">
+                <h2><i class="fas fa-play-circle"></i> Control del Bot</h2>
+                <div class="controls">
+                    <button id="runBot" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Ejecutar Scraping
+                    </button>
+                    <button id="stopBot" class="btn btn-danger" disabled>
+                        <i class="fas fa-stop"></i> Detener Bot
+                    </button>
+                    <button id="testBot" class="btn btn-secondary">
+                        <i class="fas fa-vial"></i> Prueba Local
+                    </button>
+                </div>
+                <div class="execution-info">
+                    <p><strong>Última ejecución:</strong> <span id="lastExecution">Nunca</span></p>
+                    <p><strong>Estado:</strong> <span id="botStatus">Inactivo</span></p>
+                </div>
+            </section>
+
+            <!-- Statistics -->
+            <section class="card stats-panel">
+                <h2><i class="fas fa-chart-bar"></i> Estadísticas</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalCars">0</div>
+                        <div class="stat-label">Carros Analizados</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="sentToTelegram">0</div>
+                        <div class="stat-label">Enviados a Telegram</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="avgPrice">S/ 0</div>
+                        <div class="stat-label">Precio Promedio</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="successRate">0%</div>
+                        <div class="stat-label">Tasa de Éxito</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuration -->
+            <section class="card config-panel">
+                <h2><i class="fas fa-cog"></i> Configuración</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label for="maxPrice">Precio Máximo (S/)</label>
+                        <input type="number" id="maxPrice" value="80000" min="10000" max="200000">
+                    </div>
+                    <div class="config-item">
+                        <label for="minYear">Año Mínimo</label>
+                        <input type="number" id="minYear" value="2010" min="2000" max="2024">
+                    </div>
+                    <div class="config-item">
+                        <label for="maxItems">Items por Ejecución</label>
+                        <input type="number" id="maxItems" value="15" min="5" max="50">
+                    </div>
+                    <div class="config-item">
+                        <label for="minProfit">Margen Mínimo (%)</label>
+                        <input type="number" id="minProfit" value="15" min="5" max="50">
+                    </div>
+                </div>
+                <button id="saveConfig" class="btn btn-success">
+                    <i class="fas fa-save"></i> Guardar Configuración
+                </button>
+            </section>
+
+            <!-- Market Context -->
+            <section class="card context-panel">
+                <h2><i class="fas fa-chart-line"></i> Contexto del Mercado</h2>
+                <div class="context-info">
+                    <div class="context-item">
+                        <strong>Precio Promedio Segmento:</strong> 
+                        <span id="marketAvgPrice">S/ 0</span>
+                    </div>
+                    <div class="context-item">
+                        <strong>Rango de Precios:</strong> 
+                        <span id="marketPriceRange">S/ 0 - S/ 0</span>
+                    </div>
+                    <div class="context-item">
+                        <strong>Año Promedio:</strong> 
+                        <span id="marketAvgYear">0</span>
+                    </div>
+                    <div class="context-item">
+                        <strong>Marcas Populares:</strong> 
+                        <span id="marketTopBrands">-</span>
+                    </div>
+                    <div class="context-item">
+                        <strong>Segmento de Mercado:</strong> 
+                        <span id="marketSegment">-</span>
+                    </div>
+                </div>
+                <button id="refreshContext" class="btn btn-info">
+                    <i class="fas fa-sync"></i> Actualizar Contexto
+                </button>
+            </section>
+
+            <!-- Recent Cars -->
+            <section class="card cars-panel">
+                <h2><i class="fas fa-car-side"></i> Carros Recientes</h2>
+                <div class="cars-list" id="carsList">
+                    <p class="no-data">No hay carros analizados aún</p>
+                </div>
+            </section>
+
+            <!-- Logs -->
+            <section class="card logs-panel">
+                <h2><i class="fas fa-terminal"></i> Logs del Sistema</h2>
+                <div class="logs-container">
+                    <div class="logs-content" id="logsContent">
+                        <p class="log-entry info">[INFO] Panel de control iniciado</p>
+                    </div>
+                </div>
+                <div class="logs-controls">
+                    <button id="clearLogs" class="btn btn-warning">
+                        <i class="fas fa-trash"></i> Limpiar Logs
+                    </button>
+                    <button id="refreshLogs" class="btn btn-info">
+                        <i class="fas fa-sync"></i> Actualizar
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 FB Marketplace Bot Perú - Panel de Control</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

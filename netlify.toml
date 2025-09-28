@@ -1,0 +1,12 @@
+[build]
+  functions = "netlify/functions"
+  publish = "public"
+
+[functions]
+  node_bundler = "esbuild"
+
+[functions.scrape-cars]
+  schedule = "0 */2 * * *"  # Ejecutar cada 2 horas
+
+[build.environment]
+  NODE_VERSION = "18"

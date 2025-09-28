@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - FB Marketplace Bot Perú</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer {
+            margin-top: 2rem;
+            color: #999;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">🚗 FB Bot Perú</div>
+        <div class="subtitle">Panel de Control</div>
+        
+        <div id="errorMessage" class="error-message"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="password">Contraseña de Acceso</label>
+                <input type="password" id="password" name="password" required placeholder="Ingresa tu contraseña">
+            </div>
+            
+            <button type="submit" class="login-btn" id="loginBtn">
+                Iniciar Sesión
+            </button>
+        </form>
+        
+        <div class="footer">
+            Acceso restringido al panel de administración
+        </div>
+    </div>
+
+    <script>
+        class LoginController {
+            constructor() {
+                this.form = document.getElementById('loginForm');
+                this.passwordInput = document.getElementById('password');
+                this.loginBtn = document.getElementById('loginBtn');
+                this.errorMessage = document.getElementById('errorMessage');
+                
+                this.bindEvents();
+                this.checkExistingAuth();
+            }
+
+            bindEvents() {
+                this.form.addEventListener('submit', (e) => this.handleLogin(e));
+                
+                // Clear error on input
+                this.passwordInput.addEventListener('input', () => {
+                    this.hideError();
+                });
+            }
+
+            async handleLogin(e) {
+                e.preventDefault();
+                
+                const password = this.passwordInput.value.trim();
+                
+                if (!password) {
+                    this.showError('Por favor ingresa la contraseña');
+                    return;
+                }
+
+                this.setLoading(true);
+                this.hideError();
+
+                try {
+                    // Simple client-side authentication
+                    // In production, this should be server-side
+                    const validPassword = 'fbbot2024'; // This should be in environment variables
+                    
+                    if (password === validPassword) {
+                        // Store auth token
+                        const authToken = btoa(Date.now() + ':' + password);
+                        localStorage.setItem('fbbot_auth', authToken);
+                        sessionStorage.setItem('fbbot_session', 'active');
+                        
+                        // Redirect to dashboard
+                        window.location.href = '/';
+                    } else {
+                        throw new Error('Contraseña incorrecta');
+                    }
+                    
+                } catch (error) {
+                    this.showError(error.message);
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            checkExistingAuth() {
+                const authToken = localStorage.getItem('fbbot_auth');
+                const session = sessionStorage.getItem('fbbot_session');
+                
+                if (authToken && session === 'active') {
+                    // User is already authenticated
+                    window.location.href = '/';
+                }
+            }
+
+            setLoading(loading) {
+                if (loading) {
+                    this.loginBtn.disabled = true;
+                    this.loginBtn.innerHTML = '<span class="loading"></span> Verificando...';
+                } else {
+                    this.loginBtn.disabled = false;
+                    this.loginBtn.innerHTML = 'Iniciar Sesión';
+                }
+            }
+
+            showError(message) {
+                this.errorMessage.textContent = message;
+                this.errorMessage.style.display = 'block';
+            }
+
+            hideError() {
+                this.errorMessage.style.display = 'none';
+            }
+        }
+
+        // Initialize login controller
+        document.addEventListener('DOMContentLoaded', () => {
+            new LoginController();
+        });
+    </script>
+</body>
+</html>
